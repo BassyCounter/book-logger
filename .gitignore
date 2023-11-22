@@ -1,0 +1,5 @@
+.idea/
+**__pycache__/
+logs/
+src/book-logger.json
+pseudocode.txt
