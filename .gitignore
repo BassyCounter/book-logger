@@ -3,3 +3,4 @@
 logs/
 src/book-logger.json
 pseudocode.txt
+**/.pytest_cache

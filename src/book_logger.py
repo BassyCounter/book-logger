@@ -2,12 +2,17 @@ import random
 import os
 import datetime
 import json
+from typing import Dict
 
 
-# todo type annotate stuff (purely just to get familiar with and hopefully increase productivity)
-# todo update try/except blocks
-def check_data_structure(data, author, novel):
-    """ Creates dictionaries for any of the parameters that don't already exist. """
+def check_data_structure(data: Dict[str, Dict[str, Dict[str, str]]], author: str, novel: str):
+    """
+    Checks if there's already a nested layer matching the second and third parameter.
+    :param data: Book logger data (dict, nested 3 levels)
+    :param author: Second layer of nesting
+    :param novel: Third layer of nesting
+    :return: None
+    """
     if author not in data:
         data[author] = {}
 
@@ -15,18 +20,21 @@ def check_data_structure(data, author, novel):
         data[author][novel] = {}
 
 
-def timestamp():
+def timestamp() -> str:
     """
-    Grabs current date and time; converts the date to an American format and formats the time to show only hours,
+    Grabs system date and time; converts the date to an American format and formats the time to show only hours,
     minutes, and seconds.
+    :return: str
     """
     current_datetime = datetime.datetime.now()
     return current_datetime.strftime("%m/%d/%Y %H:%M:%S")
 
 
-def is_file_empty(file_path):
+def is_file_empty(file_path: str) -> bool:
     """
-    Returns True if the file path doesn't exist, otherwise it returns a boolean value of the specified expression.
+    Returns True if the file path doesn't exist, otherwise the bool of os.path.getsize(file_path) == 0.
+    :param file_path: Path to file (str)
+    :return: bool
     """
     if not os.path.exists(file_path):
         return True
@@ -34,29 +42,42 @@ def is_file_empty(file_path):
     return os.path.getsize(file_path) == 0
 
 
-def add_file_header(boolean, f_string, path):
+def add_file_header(boolean: bool, header_pattern: str, path: str):
     """
     If the boolean variable is set to True (indicating the file doesn't have content / empty = True), headers will be
     created to display what each section of file represents.
+    :param boolean:
+    :param header_pattern: Str to format in pattern specific to type of file (txt, csv, etc.)
+    :param path: File path to write headers
+    :return: None
     """
     if boolean:
-        with open(path, 'wt') as f:
-            f.write(f_string.format(
+        with open(path, "w") as f:
+            f.write(header_pattern.format(
                 col1=cell1, col2=cell2, col3=cell3, col4=cell4))
 
 
-def start_date_check(data, author, novel):
-    """ Asks user if they would like to add a start date if one doesn't already exist """
-    check_data_structure(data, author, novel)
+def check_start_date(data: Dict[str, Dict[str, Dict[str, str]]], author: str, novel: str) -> str:
+    """
+    Asks user if they would like to add a start date if one hasn't been found
+    :param data: Book logger data (dict, nested 3 levels)
+    :param author: Second level of nesting
+    :param novel: Third level of nesting
+    :return: User answer (str, only if no start date found)
+    """
     if "Start Date" not in data[author][novel]:
         answer = input("No start date was found, would you like to enter one? Y/N >>> ").strip().lower().capitalize()
         return answer
 
 
-def modify_start_date(data, answer, author, novel):
+def modify_start_date(data: Dict[str, Dict[str, Dict[str, str]]], answer: str, author: str, novel: str):
     """
-    Allows user to set a value for start date if the user puts Yes or Y as answer, otherwise sets it to N/A as long as
-    it doesn't already exist
+
+    :param data: Book logger data (dict, nested 3 levels)
+    :param answer: str, 'Yes' or 'Y' prompts user for new start date, otherwise puts a placeholder if one isn't found
+    :param author: Second level of nesting
+    :param novel: Third level of nesting
+    :return: None
     """
     if (answer == "Y") or (answer == "Yes"):
         data[author][novel]["Start Date"] = input("Enter new date: >>> ").strip()
@@ -65,7 +86,13 @@ def modify_start_date(data, answer, author, novel):
         data[author][novel]["Start Date"] = 'N/A'
 
 
-def modify_entry(data, result):
+def modify_entry(data: Dict[str, Dict[str, Dict[str, str]]], result: str) -> None:
+    """
+    Gathers needed information for modifying structure of data
+    :param data: Book logger data (dict, nested 3 levels)
+    :param result: str, goes back to main menu if 'Quit' or 'Q', otherwise it should reflect which data entry to modify.
+    :return: None
+    """
     sentinels = ["Exit", "exit"]
 
     if (result == "Quit") or (result == "Q"):
@@ -203,19 +230,29 @@ Drebin (Leslie Nielsen), Naked Gun 2 1/2: The Smell of Fear\n',
     print(message)
 
 
-def import_json():
+def import_json() -> dict:
+    """
+    Imports json data if any exists, otherwise creates an empty dict
+    :return: Either json data or new dict
+    """
     try:
-        with open(json_path, "r") as file:
-            data_dict = json.load(file)
+        file = open(json_path, "r")
     except FileNotFoundError:
         print("No data available currently to import, this should change once book log begins.\n")
         data_dict = {}
         return data_dict
     else:
+        with file:
+            data_dict = json.load(file)
         return data_dict
 
 
-def start_entry(data):
+def start_entry(data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
+    """
+    Creates new log entry with timestamp of start date
+    :param data: Book logger data (dict, nested 3 levels)
+    :return: None
+    """
     name = input("Enter name(s) of author/authors. >>> ").strip()
     book = input("Enter title of book. >>> ").strip()
     check_data_structure(data, name, book)
@@ -230,48 +267,56 @@ def start_entry(data):
 
     try:
         add_file_header(is_file_empty(csv_path), csv_file_line, csv_path)
-        with open(csv_path, "a") as file:
-            file.write(csv_file_line.format(col1=name, col2=book, col3=date1, col4=date2))
     except PermissionError:
         print("Unable to write new data to csv file, please close the program the file is opened in and try again.")
         print("(You can use the 'Push' command to write all data back to file once the program is closed)")
-    finally:
-        with open(json_path, "w") as file:
-            json.dump(data, file, indent=4)
+    else:
+        with open(csv_path, "a") as file:
+            file.write(csv_file_line.format(col1=name, col2=book, col3=date1, col4=date2))
+
+    with open(json_path, "w") as file:
+        json.dump(data, file, indent=4)
 
 
-def end_entry(data):
+def end_entry(data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
+    """
+    Adds and end date to book log
+    :param data: Book logger data (dict, nested 3 levels)
+    :return: None
+    """
     name = input("Enter name(s) of author/authors. >>> ").strip()
     book = input("Enter title of book. >>> ").strip()
     check_data_structure(data, name, book)
     date2 = timestamp()
-    result = start_date_check(data, name, book)
+    result = check_start_date(data, name, book)
     modify_start_date(data, result, name, book)
     data[name][book]["End Date"] = date2
 
 
-def display_txt_file():
+def display_txt_file():            # todo manual tests
     try:
-        with open(txt_path, "r") as file:
-            for line in file:
-                print(line.rstrip())
+        file = open(txt_path, "r")
     except FileNotFoundError:
         print("No book-log.txt file found, please add entries before using this command.\n")
+    else:
+        with file:
+            for line in file:
+                print(line.rstrip())
 
 
-def display_modifier_options():
+def display_modifier_options() -> str:
     prompt = ("Which field would you like to modify?\n\n"
               "Author/Authors : A\n"
               "Book Title : B\n"
               "Start Date : S\n"
               "End Date : E\n"
-              "Quit : Q\n\n"
+              "Quit : Q (Back to Main Menu)\n\n"
               ">>> ")
     result = input(prompt).strip().lower()
     return result
 
 
-def dump_to_files(data):
+def dump_to_files(data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
     with open(txt_path, "w") as file:
         file.write(txt_file_line.format(
             col1=cell1, col2=cell2, col3=cell3, col4=cell4))
@@ -280,8 +325,14 @@ def dump_to_files(data):
                 date1 = dates.get("Start Date", "N/A")
                 date2 = dates.get("End Date", "N/A")
                 file.write(f"{name:40} | {book:40} | {date1:20} | {date2:20}\n")
+
     try:
-        with open(csv_path, "w") as file:
+        file = open(csv_path, "w")
+    except PermissionError:
+        print("Unable to write new data to csv file, close other program and run this command again.")
+        print("(You can use the 'Push' command to write all data back to file once the program is closed)")
+    else:
+        with file:
             file.write(csv_file_line.format(
                 col1=cell1, col2=cell2, col3=cell3, col4=cell4))
             for name, books in data.items():
@@ -289,12 +340,9 @@ def dump_to_files(data):
                     date1 = dates.get("Start Date", "N/A")
                     date2 = dates.get("End Date", "N/A")
                     file.write(f'"{name}","{book}",{date1},{date2}\n')
-    except PermissionError:
-        print("Unable to write new data to csv file, close other program and run this command again.")
-        print("(You can use the 'Push' command to write all data back to file once the program is closed)")
-    finally:
-        with open(json_path, "w") as file:
-            json.dump(data, file, indent=4)
+
+    with open(json_path, "w") as file:
+        json.dump(data, file, indent=4)
 
 
 def main():
@@ -336,14 +384,12 @@ Quit - Terminates program
         print()
         user_input = input(program_options[19:]).strip().lower().title()
 
-    print(program_data)
-
 
 # Get the user's home directory
 home_directory = os.path.expanduser('~')
 
 # Create a "Documents" directory path within the home directory
-documents_directory = os.path.join(home_directory, 'Documents')
+documents_directory = os.path.join(home_directory, "Documents")
 
 cell1 = "Author/Authors"
 cell2 = "Book Title"
