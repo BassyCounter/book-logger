@@ -143,8 +143,11 @@ def start_entry(data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
         print("Unable to write new data to csv file, please close the program the file is opened in and try again.")
         print("(You can use the 'Push' command to write all data back to file once the program is closed)")
     else:
-        with open(CSV_PATH, "a") as file:
-            file.write(CSV_FILE_LINE.format(col1=name, col2=book, col3=date1, col4=date2))
+        try:
+            with open(CSV_PATH, "a") as file:
+                file.write(CSV_FILE_LINE.format(col1=name, col2=book, col3=date1, col4=date2))
+        except PermissionError:
+            print("Data has been saved.")
 
     with open(JSON_PATH, "w") as file:
         json.dump(data, file, indent=4)
