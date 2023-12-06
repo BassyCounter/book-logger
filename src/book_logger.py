@@ -311,7 +311,7 @@ def modify_author(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: lis
 
         else:
             print("Entry with author/authors not found within any fields. Please enter existing field data or type \
-    'Exit'.")
+'Exit'.")
             print("Enter 'Exit', then 'Quit' or 'Q' and use 'View Log' to copy and paste exact values.")
             print("(Not case-sensitive)\n")
 
