@@ -27,6 +27,7 @@ CSV_FILE_LINE = '"{col1}","{col2}","{col3}","{col4}"\n'
 JSON_FILENAME = "book-log.json"
 JSON_PATH = os.path.join(os.path.dirname(__file__), JSON_FILENAME)
 
+sentinels = ["quit", "Quit", "q", "Q", "exit", "Exit", "e", "E"]
 
 def main():
     display_random_quote()
@@ -36,7 +37,7 @@ def main():
 Book Log Options:
 
 Start - Add start date for new book
-End - Add end date for new or existing book
+Finish - Add end date for new or existing book
 View Log - Display book log entries
 Modify Entry - Edit author(s), book title, start/end date
 Push - Writes data to files if it was previously unable to due to it being open in other program
@@ -45,11 +46,13 @@ Quit - Terminates program
 >>> """
     user_input = input(program_options).strip().lower().title()
 
-    while user_input != "Quit":
+    while user_input not in sentinels:
+        has_changed = False
+
         if user_input == "Start":
             start_entry(program_data)
             dump_to_files(program_data)
-        elif user_input == "End":
+        elif user_input == "Finish":
             end_entry(program_data)
             dump_to_files(program_data)
         elif user_input == "View Log":
@@ -57,8 +60,8 @@ Quit - Terminates program
             display_txt_file()
         elif user_input == "Modify Entry":
             option_choice = display_modifier_options()
-            modify_entry(program_data, option_choice)
-            if option_choice not in ["Quit", "Q"]:
+            has_changed = modify_entry(program_data, option_choice)
+            if option_choice not in sentinels and has_changed == True: # Because the modify_entry() function returns after an invalid input, both conditions are needed.
                 dump_to_files(program_data)
         elif user_input == "Push":
             dump_to_files(program_data)
@@ -126,7 +129,13 @@ def start_entry(data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
     :return: None
     """
     name = input("Enter name(s) of author/authors. >>> ").strip()
+    if name in sentinels:
+        return
+    
     book = input("Enter title of book. >>> ").strip()
+    if book in sentinels:
+        return
+    
     check_data_structure(data, name, book)
     date1 = timestamp()
     date2 = "N/A"
@@ -212,7 +221,13 @@ def end_entry(data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
     :return: None
     """
     name = input("Enter name(s) of author/authors. >>> ").strip()
+    if name in sentinels:
+        return
+    
     book = input("Enter title of book. >>> ").strip()
+    if book in sentinels:
+        return
+    
     check_data_structure(data, name, book)
     date2 = timestamp()
     result = check_start_date(data, name, book)
@@ -265,46 +280,54 @@ def display_modifier_options() -> str:
               "Author/Authors : A\n"
               "Book Title : B\n"
               "Start Date : S\n"
-              "End Date : E\n"
+              "Finish Date : F\n"
               "Back (Back to Main Menu)\n\n"
               ">>> ")
     result = input(prompt).strip().lower().title()
     return result
 
 
-def modify_entry(data: Dict[str, Dict[str, Dict[str, str]]], result: str) -> None:
+def modify_entry(data: Dict[str, Dict[str, Dict[str, str]]], result: str) -> bool:
     """
     Gathers needed information for modifying structure of data
     :param data: Book logger data (dict, nested 3 levels)
     :param result: str, goes back to main menu if 'Quit' or 'Q', otherwise it should reflect which data entry to modify.
-    :return: None
+    :return: bool, if any changes occurred, returns True
     """
-    sentinels = ["Exit", "exit"]
-
-    if result == "Back":
-        return
+    if (result == "Back") or (result in sentinels):
+        return False
 
     elif (result == "Author") or (result == "Authors") or (result == "A"):
-        modify_author(data, sentinels)
+        has_changed = modify_author(data, sentinels)
+        return has_changed
 
     elif (result == "Book") or (result == "Book Title") or (result == "B"):
-        modify_book(data, sentinels)
+        has_changed = modify_book(data, sentinels)
+        return has_changed
 
     elif (result == "Start") or (result == "Start Date") or (result == "S"):
-        modify_start_date(data, sentinels)
+        has_changed = modify_start_date(data, sentinels)
+        return has_changed
 
-    elif (result == "End") or (result == "End Date") or (result == "E"):
-        modify_end_date(data, sentinels)
+    elif (result == "Finish") or (result == "Finish Date") or (result == "F"):
+        has_changed = modify_end_date(data, sentinels)
+        return has_changed
 
     else:
         print("Invalid, try again.")
 
 
-def modify_author(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: list[str]):
+def modify_author(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: list[str]) -> bool:
+    """
+    Responsible for editing author values within an entry
+    :param data: Book logger data (dict, nested 3 levels)
+    :param exit_commands: A global list of various sentinel values that can be used to undo or change mind over what to do
+    :return: bool, if any changes occurred, returns True
+    """
     while True:
         author = input("Enter name(s) of author/authors to modify. >>> ")
         if author in exit_commands:
-            return  # Nothing else needed to execute
+            return False # Nothing else needed to execute
 
         if author in data:
             break  # Valid author name provided, exit the loop
@@ -312,28 +335,36 @@ def modify_author(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: lis
         else:
             print("Entry with author/authors not found within any fields. Please enter existing field data or type \
 'Exit'.")
-            print("Enter 'Exit', then 'Quit' or 'Q' and use 'View Log' to copy and paste exact values.")
+            print("Enter 'Exit', then use 'View Log' to copy and paste exact values.")
             print("(Not case-sensitive)\n")
 
     # Only executes if the user would like to continue with attempting to modify data
     replacement = input("What would you like to replace it with? >>> ")
     data[replacement] = data.pop(author)
     print("Author/authors has been replaced with:", replacement)
+    has_changed = True
+    return has_changed
 
 
-def modify_book(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: list[str]):
+def modify_book(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: list[str]) -> bool:
+    """
+    Responsible for editing book title values within an entry
+    :param data: Book logger data (dict, nested 3 levels)
+    :param exit_commands: A global list of various sentinel values that can be used to undo or change mind over what to do
+    :return: bool, if any changes occurred, returns True
+    """
     while True:
         author = input("Enter name(s) of author/authors book is associated with. >>> ")
         if author in exit_commands:
-            return
+            return False
 
         novel = input("Enter title of book to modify. >>> ")
         if novel in exit_commands:
-            return
+            return False
 
         if (author not in data) or (novel not in data[author]):
             print("Book and/or author/authors not found in data. Please enter existing field data or type 'Exit'.")
-            print("Enter 'Exit', then 'Quit' or 'Q' and use 'View Log' to copy and paste exact values.")
+            print("Enter 'Exit', then use 'View Log' to copy and paste exact values.")
             print("(Not case-sensitive)\n")
 
         else:
@@ -342,26 +373,34 @@ def modify_book(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: list[
     replacement = input("What would you like to replace it with? >>> ")
     data[author][replacement] = data[author].pop(novel)
     print("Book has been replaced with:", replacement)
+    has_changed = True
+    return has_changed
 
 
-def modify_start_date(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: list[str]):
+def modify_start_date(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: list[str]) -> bool:
+    """
+    Responsible for editing the start date of an entry
+    :param data: Book logger data (dict, nested 3 levels)
+    :param exit_commands: A global list of various sentinel values that can be used to undo or change mind over what to do
+    :return: bool, if any changes occurred, returns True
+    """
     while True:
         author = input("Enter name(s) of author/authors book is associated with. >>> ")
         if author in exit_commands:
-            return
+            return False
 
         novel = input("Enter title of book date is associated with. >>> ")
         if novel in exit_commands:
-            return
+            return False
 
         start_date = input("Enter start date to modify. >>> ")
         if start_date in exit_commands:
-            return
+            return False
 
         if (author not in data) or (novel not in data[author]) or (
                 start_date not in data[author][novel]["Start Date"]):
             print("One of the entered values were incorrect. Please enter existing field data or type 'Exit'.")
-            print("Enter 'Exit', then 'Quit' or 'Q' and use 'View Log' to copy and paste exact values.")
+            print("Enter 'Exit', then use 'View Log' to copy and paste exact values.")
             print("(Not case-sensitive)\n")
 
         else:
@@ -370,26 +409,34 @@ def modify_start_date(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands:
     replacement = input("What would you like to replace it with? >>> ")
     data[author][novel]["Start Date"] = replacement
     print("Start date has been replaced with:", replacement)
+    has_changed = True
+    return has_changed
 
 
 def modify_end_date(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: list[str]):
+    """
+    Responsible for editing the end date of an entry
+    :param data: Book logger data (dict, nested 3 levels)
+    :param exit_commands: A global list of various sentinel values that can be used to undo or change mind over what to do
+    :return: bool, if any changes occurred, returns True
+    """
     while True:
         author = input("Enter name(s) of author/authors book is associated with. >>> ")
         if author in exit_commands:
-            return
+            return False
 
         novel = input("Enter title of book date is associated with. >>> ")
         if novel in exit_commands:
-            return
+            return False
 
         end_date = input("Enter end date to modify. >>> ")
         if end_date in exit_commands:
-            return
+            return False
 
         if (author not in data) or (novel not in data[author]) or (
                 end_date not in data[author][novel]["End Date"]):
             print("One of the entered values were incorrect. Please enter existing field data or type 'Exit'.")
-            print("Enter 'Exit', then 'Quit' or 'Q' and use 'View Log' to copy and paste exact values.")
+            print("Enter 'Exit', then and use 'View Log' to copy and paste exact values.")
             print("(Not case-sensitive)\n")
 
         else:
@@ -398,6 +445,8 @@ def modify_end_date(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: l
     replacement = input("What would you like to replace it with? >>> ")
     data[author][novel]["End Date"] = replacement
     print("End date has been replaced with:", replacement)
+    has_changed = True
+    return has_changed
 
 
 def dump_to_files(data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
