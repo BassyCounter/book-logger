@@ -2,5 +2,7 @@
 **__pycache__/
 logs/
 src/book-log.json
+src/settings.ini
 pseudocode.txt
 **/.pytest_cache
+.DS_Store
