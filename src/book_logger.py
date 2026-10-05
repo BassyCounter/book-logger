@@ -172,21 +172,29 @@ def safe_import():
     # TODO Add more error checking/sanitize setting.ini input
     config = ConfigParser()
     config.read(INI_PATH)
+    needs_save = False
         
     print(f"Loading settings from {INI_FILENAME}.")
-    text_file_path = config.get('DEFAULT', 'text_file_path', fallback=DEFAULT_TXT_PATH).strip()
-    text_file_path = validate_path(text_file_path, TXT_FILENAME)
-    if text_file_path == 'invalid':
-        text_file_path = DEFAULT_TXT_PATH
 
-    csv_file_path = config.get('DEFAULT', 'csv_file_path', fallback=DEFAULT_CSV_PATH).strip()
-    csv_file_path = validate_path(csv_file_path, CSV_FILENAME)
-    if csv_file_path == 'invalid':
-        csv_file_path = DEFAULT_CSV_PATH
+    # Process text path
+    raw_text_path = config.get('DEFAULT', 'text_file_path', fallback=DEFAULT_TXT_PATH).strip()
+    text_file_path = validate_path(raw_text_path, TXT_FILENAME, DEFAULT_TXT_PATH)
+    if text_file_path != raw_text_path:
+        config['DEFAULT']['text_file_path'] = text_file_path
+        needs_save = True
+
+    # Process csv path
+    raw_csv_path = config.get('DEFAULT', 'csv_file_path', fallback=DEFAULT_CSV_PATH).strip()
+    csv_file_path = validate_path(raw_csv_path, CSV_FILENAME, DEFAULT_CSV_PATH)
+    if csv_file_path != raw_csv_path:
+        config['DEFAULT']['csv_file_path'] = csv_file_path
+        needs_save = True
 
     message_type = config.get('DEFAULT', 'message_type', fallback='quotes')
     if message_type not in ['quotes', 'verses', 'both', 'none']:
         message_type = 'quotes'
+        config['DEFAULT']['message_type'] = 'quotes'
+        needs_save = True
 
     try:
         repeat_menu = config['DEFAULT'].getboolean('repeat_menu', True)
@@ -195,7 +203,14 @@ def safe_import():
         print(f"Changing value to default value True.")
         print('Use "Settings" command to see more info on changing settings.')
         repeat_menu = True
-        
+        config['DEFAULT']['repeat_menu'] = 'True'
+        needs_save = True
+
+    # If any paths had to be repaired to defaults, overwrite settings.ini immediately
+    if needs_save:
+        with open(INI_PATH, 'w') as file:
+            config.write(file)
+
     return {
         'text_file_path': text_file_path,
         'csv_file_path': csv_file_path,
@@ -204,7 +219,7 @@ def safe_import():
     }
 
 
-def validate_path(path: str, target_filename: str) -> str: # TODO update/revise doc string
+def validate_path(path: str, target_filename: str, default_path: str) -> str: # TODO update/revise doc string
     """
     Validates the path. If the path is a directory or lacks a file extension, 
     the target_filename is appended automatically. 
@@ -221,16 +236,11 @@ def validate_path(path: str, target_filename: str) -> str: # TODO update/revise 
         # On Windows, lower() handles 'C:\' vs 'c:\' case differences
         if common.lower() != HOME_DIRECTORY.lower():
             print("Directories outside of current user's directory are currently unsupported.")
-            return 'invalid'
+            return default_path
     except ValueError:
         # Triggers on Windows if paths are on different drive letters (e.g. C: vs D:)
         print("Directories outside of current user's directory are currently unsupported.")
-        return 'invalid'
-
-    # Secure ownership constraint: Must start explicitly with the HOME_DIRECTORY path
-    #if not absolute_path.startswith(HOME_DIRECTORY):
-    #    print("Directories outside of current user's directory are currently unsupported.")
-    #    return 'invalid'
+        return default_path
 
     # 3. Extension & Directory handling
     if os.path.isdir(absolute_path):
@@ -244,7 +254,7 @@ def validate_path(path: str, target_filename: str) -> str: # TODO update/revise 
             user_filename = os.path.basename(absolute_path)
             if user_filename != target_filename:
                 print(f"Invalid filename: Expected '{target_filename}' or a directory path, but got '{user_filename}' instead.")
-                return 'invalid'
+                return default_path
         else:
             # No extension provided, assume it's a new directory path and append the target
             absolute_path = os.path.join(absolute_path, target_filename)
@@ -258,7 +268,7 @@ def validate_path(path: str, target_filename: str) -> str: # TODO update/revise 
         return absolute_path
     except (OSError, PermissionError) as e:
         print(f"Failed to create path due to a system error: {e}")
-        return 'invalid'
+        return default_path
 
 
 def start_entry(data: Dict[str, Dict[str, Dict[str, str]]], txt_path:str, csv_path:str) -> None: # TODO fix nested try/except block
@@ -662,13 +672,13 @@ def change_file_path(filename, settings_dict) -> bool: # 'filename' is TXT_FILEN
     new_path = input("What would you like to change path to? ") 
     if (new_path in ['back', 'b']) or (new_path in sentinels):
         return False 
+
+    # 1. Look up the correct default based on which file is being altered
+    default_path = DEFAULT_TXT_PATH if filename == TXT_FILENAME else DEFAULT_CSV_PATH
     
-    # 1. Pass 'filename' directly into validate_path
-    final_path = validate_path(new_path, filename) 
-    if new_path == 'invalid':
-        return False
+    # 2. Validate, passing the default_path
+    final_path = validate_path(new_path, filename, default_path)
     
-    # 2. Touch/initialize the file at 'final_path'
     try:
         with open(final_path, 'a'):
             os.utime(final_path, None)
