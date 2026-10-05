@@ -254,6 +254,7 @@ def validate_path(path: str, target_filename: str, default_path: str) -> str: # 
             user_filename = os.path.basename(absolute_path)
             if user_filename != target_filename:
                 print(f"Invalid filename: Expected '{target_filename}' or a directory path, but got '{user_filename}' instead.")
+                print(f"Setting path to '{default_path}'.")
                 return default_path
         else:
             # No extension provided, assume it's a new directory path and append the target
