@@ -33,6 +33,8 @@ INI_FILENAME = "settings.ini"
 INI_PATH = os.path.join(os.path.dirname(__file__), INI_FILENAME)
 
 sentinels = ["quit", "Quit", "q", "Q", "exit", "Exit", "e", "E"]
+# More sentinels, modify_entry() uses 'B' for 'Book' so separation is required
+sentinels2 = ["back", "Back", "b", "B"]
 
 def main():
     display_random_quote()
@@ -55,17 +57,18 @@ Quit - Terminates program
     user_input = input(program_options).strip().lower().title()
 
     while user_input not in sentinels:
-        # TODO make sure pathing works right
         active_txt_path = program_settings["text_file_path"]
         active_csv_path = program_settings["csv_file_path"]
-        has_changed = False
-        # TODO only dump_to_files for start/end entry if has_changed
+        has_changed = False # Reset for next loop
+        
         if user_input == "Start":
-            start_entry(program_data, active_txt_path, active_csv_path)
-            dump_to_files(program_data, active_txt_path, active_csv_path)
+            has_changed = start_entry(program_data, active_txt_path, active_csv_path)
+            if has_changed == True:
+                dump_to_files(program_data, active_txt_path, active_csv_path)
         elif user_input == "Finish":
-            end_entry(program_data)
-            dump_to_files(program_data, active_txt_path, active_csv_path)
+            has_changed = end_entry(program_data)
+            if has_changed == True:
+                dump_to_files(program_data, active_txt_path, active_csv_path)
         elif user_input == "View Log":
             print()
             display_txt_file(active_txt_path)
@@ -77,11 +80,11 @@ Quit - Terminates program
         elif user_input == "Push":
             dump_to_files(program_data, active_txt_path, active_csv_path)
         elif user_input == "Settings":
-            # TODO implement settings logic here
+            # TODO finish implementing settings logic
             option_choice = display_settings_options(program_settings)
             has_changed = change_settings(program_settings, option_choice)
             program_settings = import_ini() # Refresh program_settings
-            # TODO ensure has_changed is calculated correctly and txt_path/csv_path are updated before dump_to_files executes
+            # TODO ensure has_changed is calculated correctly
             if option_choice not in sentinels and has_changed == True:
                 active_txt_path = program_settings['text_file_path']
                 active_csv_path = program_settings['csv_file_path']
@@ -277,19 +280,21 @@ def validate_path(path: str, target_filename: str, default_path: str) -> str: # 
         return default_path
 
 
-def start_entry(data: Dict[str, Dict[str, Dict[str, str]]], txt_path:str, csv_path:str) -> None: # TODO fix nested try/except block
+def start_entry(data: Dict[str, Dict[str, Dict[str, str]]], txt_path:str, csv_path:str) -> bool: # TODO fix nested try/except block
     """
     Creates new log entry with timestamp of start date
     :param data: Book logger data (dict, nested 3 levels)
-    :return: None
+    :param txt_path: location/path of txt file to save information to
+    :param csv_path: location/path of csv file to save information to
+    :return: bool, False if returned early, True if finished executing
     """
     name = input("Enter name(s) of author/authors. >>> ").strip()
-    if name in sentinels:
-        return
+    if name in sentinels or name in sentinels2:
+        return False
     
     book = input("Enter title of book. >>> ").strip()
-    if book in sentinels:
-        return
+    if book in sentinels or name in sentinels2:
+        return False
     
     check_data_structure(data, name, book)
     date1 = timestamp()
@@ -315,6 +320,8 @@ def start_entry(data: Dict[str, Dict[str, Dict[str, str]]], txt_path:str, csv_pa
 
     with open(JSON_PATH, "w") as file:
         json.dump(data, file, indent=4)
+
+    return True
 
 
 def check_data_structure(data: Dict[str, Dict[str, Dict[str, str]]], author: str, novel: str):
@@ -369,25 +376,27 @@ def is_file_empty(file_path: str) -> bool:
     return os.path.getsize(file_path) == 0
 
 
-def end_entry(data: Dict[str, Dict[str, Dict[str, str]]]) -> None:
+def end_entry(data: Dict[str, Dict[str, Dict[str, str]]]) -> bool:
     """
     Adds and end date to book log
     :param data: Book logger data (dict, nested 3 levels)
-    :return: None
+    :return: bool, False if returned early, True if finished executing
     """
     name = input("Enter name(s) of author/authors. >>> ").strip()
-    if name in sentinels:
-        return
+    if name in sentinels or name in sentinels2:
+        return False
     
     book = input("Enter title of book. >>> ").strip()
-    if book in sentinels:
-        return
+    if book in sentinels or name in sentinels2:
+        return False
     
     check_data_structure(data, name, book)
     date2 = timestamp()
     result = check_start_date(data, name, book)
     set_start_date(data, result, name, book)
     data[name][book]["End Date"] = date2
+
+    return True
 
 
 def check_start_date(data: Dict[str, Dict[str, Dict[str, str]]], author: str, novel: str) -> str:
