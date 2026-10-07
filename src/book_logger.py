@@ -225,8 +225,13 @@ def validate_path(path: str, target_filename: str, default_path: str) -> str: # 
     the target_filename is appended automatically. 
     Rejects paths that specify a mismatched filename. Creates necessary parent directories.
     """
-    # 1. Force both slash types to match the current operating system's native separator
-    clean_path = path.replace('\\', os.sep).replace('/', os.sep)
+    # Split on both slashes and discard empty components caused by duplicates
+    parts = [p for p in path.replace('\\', '/').split('/') if p]
+
+    # 1. Reconstruct path safely with native OS separators
+    clean_path = os.sep.join(parts)
+    if path.startswith('/') or path.startswith('\\'):
+        clean_path = os.sep + clean_path
     absolute_path = os.path.normpath(os.path.abspath(clean_path))
 
     # 2. Cross-platform check if absolute_path is inside HOME_DIRECTORY
