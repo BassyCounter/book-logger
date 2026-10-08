@@ -48,10 +48,11 @@ Start - Add start date for new book
 Finish - Add end date for new or existing book
 View Log - Display book log entries
 Modify Entry - Edit author(s), book title, start/end date
-Push - Writes data to files if it was previously unable to due to it being open\
- in other program
+Push - Writes data to files. Useful for ensuring txt/csv files get updated, 
+       especially if file paths were modified through settings.ini before 
+       running this program
 Settings - View and edit program settings
-Quit - Terminates program
+Quit - Terminates program (Does not save anything)
 
 >>> """
     user_input = input(program_options).strip().lower().title()
