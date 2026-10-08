@@ -260,10 +260,12 @@ def validate_path(path: str, target_filename: str, default_path: str) -> str:
         # On Windows, lower() handles 'C:\' vs 'c:\' case differences
         if common.lower() != HOME_DIRECTORY.lower():
             print("Directories outside of current user's directory are currently unsupported.")
+            print(f"Setting path to '{default_path}'.")
             return default_path
     except ValueError:
         # Triggers on Windows if paths are on different drive letters (e.g. C: vs D:)
         print("Directories outside of current user's directory are currently unsupported.")
+        print(f"Setting path to '{default_path}'.")
         return default_path
 
     # 3. Extension & Directory handling
@@ -293,6 +295,7 @@ def validate_path(path: str, target_filename: str, default_path: str) -> str:
         return absolute_path
     except (OSError, PermissionError) as e:
         print(f"Failed to create path due to a system error: {e}")
+        print(f"Setting path to '{default_path}'.")
         return default_path
 
 
