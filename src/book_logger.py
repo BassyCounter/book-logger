@@ -130,7 +130,7 @@ Drebin (Leslie Nielsen), Naked Gun 2 1/2: The Smell of Fear\n',
 
 def import_json() -> dict:
     """
-    Imports json data if any exists, otherwise creates an empty dict
+    Imports json data if any exists, otherwise creates an empty dict.
     :return: Either json data or new dict
     """
     try:
@@ -147,6 +147,11 @@ def import_json() -> dict:
     
 
 def import_ini() -> dict:
+    """
+    Imports ini file containing settings for the program, otherwise creates one
+    and populates it with defaults.
+    :return: dict with program settings
+    """
     try:
         file = open(INI_PATH, 'r')
     except FileNotFoundError:
@@ -171,7 +176,12 @@ def import_ini() -> dict:
         return settings_dict
 
 
-def safe_import():
+def safe_import() -> dict:
+    """
+    Attempts to import all requested settings from set ini file, resolves any
+    issues.
+    :return: requested/resolved settings
+    """
     # TODO Add more error checking/sanitize setting.ini input
     config = ConfigParser()
     config.read(INI_PATH)
@@ -222,11 +232,16 @@ def safe_import():
     }
 
 
-def validate_path(path: str, target_filename: str, default_path: str) -> str: # TODO update/revise doc string
+def validate_path(path: str, target_filename: str, default_path: str) -> str:
     """
     Validates the path. If the path is a directory or lacks a file extension, 
     the target_filename is appended automatically. 
     Rejects paths that specify a mismatched filename. Creates necessary parent directories.
+    Returns global default path specified if cannot be resolved.
+    :param path: Path to validate/process
+    :param target_filename: Acceptable file extension for the path
+    :param default_path: Global default path for specified file
+    :return: path after processing for various flaws
     """
     # Split on both slashes and discard empty components caused by duplicates
     parts = [p for p in path.replace('\\', '/').split('/') if p]
@@ -324,7 +339,7 @@ def start_entry(data: Dict[str, Dict[str, Dict[str, str]]], txt_path:str, csv_pa
     return True
 
 
-def check_data_structure(data: Dict[str, Dict[str, Dict[str, str]]], author: str, novel: str):
+def check_data_structure(data: Dict[str, Dict[str, Dict[str, str]]], author: str, novel: str) -> None:
     """
     Checks if there's already a nested layer matching the second and third parameter.
     :param data: Book logger data (dict, nested 3 levels)
@@ -349,7 +364,7 @@ def timestamp() -> str:
     return current_datetime.strftime("%m/%d/%Y %H:%M:%S")
 
 
-def add_file_header(boolean: bool, header_pattern: str, path: str):
+def add_file_header(boolean: bool, header_pattern: str, path: str) -> None:
     """
     If the boolean variable is set to True (indicating the file doesn't have content / empty = True), headers will be
     created to display what each section of file represents.
@@ -414,7 +429,7 @@ def check_start_date(data: Dict[str, Dict[str, Dict[str, str]]], author: str, no
     return data[author][novel]['Start Date']
 
 
-def set_start_date(data: Dict[str, Dict[str, Dict[str, str]]], answer: str, author: str, novel: str):
+def set_start_date(data: Dict[str, Dict[str, Dict[str, str]]], answer: str, author: str, novel: str) -> None:
     """
 
     :param data: Book logger data (dict, nested 3 levels)
@@ -442,6 +457,10 @@ def display_txt_file(txt_path:str) -> None:
 
 
 def display_modifier_options() -> str:
+    """
+    Shows which options can be chosen when trying to modify an entry.
+    :return: what the user selects (str)
+    """
     prompt = ("\nWhich field would you like to modify?\n\n"
               "Author/Authors : A\n"
               "Book Title : B\n"
@@ -454,6 +473,10 @@ def display_modifier_options() -> str:
 
 
 def display_settings_options(settings_dict) -> str:
+    """
+    Shows what settings are set and asks user for input on what to change.
+    :return: what the user selects (str)
+    """
     print()
     print(f"Saving '{TXT_FILENAME}' to '{settings_dict.get('text_file_path')}'")
     print(f"Saving '{CSV_FILENAME}' to '{settings_dict.get('csv_file_path')}'")
@@ -635,6 +658,13 @@ def modify_end_date(data: Dict[str, Dict[str, Dict[str, str]]], exit_commands: l
 
 
 def dump_to_files(data: Dict[str, Dict[str, Dict[str, str]]], txt_path: str, csv_path: str) -> None:
+    """
+    Attempts to write json data to txt and csv files using formatting.
+    :param data: dict, nested 3 levels, holds book log data for json file
+    :param txt_path: path to txt file
+    :param csv_path: path to csv file
+    :return: None
+    """
     with open(txt_path, "w") as file:
         file.write(TXT_FILE_LINE.format(
             col1=CELL_1, col2=CELL_2, col3=CELL_3, col4=CELL_4))
@@ -663,7 +693,14 @@ def dump_to_files(data: Dict[str, Dict[str, Dict[str, str]]], txt_path: str, csv
         json.dump(data, file, indent=4)
 
 
-def change_settings(settings_dict, result): # TODO finish implementing
+def change_settings(settings_dict, result) -> bool: # TODO finish implementing
+    """
+    Controls flow of what setting to change, returns False if unknown input or 
+    user interupts flow by trying to back out.
+    :param settings_dict: dict of settings information to set/change
+    :param result: chosen setting to change, sentinel, or unknown command
+    :return: bool, False if nothing has changed
+    """
     if (result in ['back', 'Back', 'b', 'B']) or (result in sentinels):
         return False
     elif (result == "text file path") or (result == "text") or (result == "t"):
@@ -673,7 +710,7 @@ def change_settings(settings_dict, result): # TODO finish implementing
         has_changed = change_file_path(CSV_FILENAME, settings_dict)
         return has_changed
     elif (result == "quotes") or (result == "q"):
-        has_changed = change_quotes # TODO finish implementation
+        has_changed = change_quotes() # TODO finish implementation
         return has_changed
     elif (result == "repeat") or (result == "r"):
         has_changed = change_command_recap() # TODO finish implementation
@@ -684,6 +721,13 @@ def change_settings(settings_dict, result): # TODO finish implementing
 
 
 def change_file_path(filename, settings_dict) -> bool: # 'filename' is TXT_FILENAME or CSV_FILENAME
+    """
+    Takes requested path from user and determines relevant default, attempts to 
+    validate path, then updates file and saves to settings based on extension.
+    :param filename: the relevant file of path being changed
+    :param settings_dict: dict of settings that can be changed
+    :return: bool, False if nothing changed
+    """
     new_path = input("What would you like to change path to? ") 
     if (new_path in ['back', 'b']) or (new_path in sentinels):
         return False 
@@ -710,6 +754,14 @@ def change_file_path(filename, settings_dict) -> bool: # 'filename' is TXT_FILEN
 
 
 def assign_file_path(file_type, path, config) -> bool:
+    """
+    Determines which variable to assign path to in ini file and updates it. 
+    Returns True if changed.
+    :param file_type: The extension of the file relevant to path
+    :param path: The path being assigned
+    :param config: The data written to ini file
+    :return: bool, False if invalid file extension used. 
+    """
     if file_type == '.txt':
         config['DEFAULT']['text_file_path'] = path
         # TODO make some sort of lambda func to condense if/elif branches?
